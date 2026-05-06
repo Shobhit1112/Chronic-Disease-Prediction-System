@@ -214,20 +214,23 @@ def create_app() -> Flask:
         # For the chart: last 10 probabilities
         chart_rows = recent[:10][::-1]
         chart_labels = [r.created_at.strftime("%m-%d %H:%M") for r in chart_rows]
-        chart_probs = []
+        chart_diabetes = []
+        chart_heart = []
+        chart_kidney = []
+        
         for r in chart_rows:
-            if r.diabetes_risk is not None:
-                max_prob = max(float(r.diabetes_risk), float(r.heart_risk), float(r.kidney_risk))
-            else:
-                max_prob = float(r.probability or 0)
-            chart_probs.append(round(max_prob * 100, 1))
+            chart_diabetes.append(round(float(r.diabetes_risk or 0) * 100, 1))
+            chart_heart.append(round(float(r.heart_risk or 0) * 100, 1))
+            chart_kidney.append(round(float(r.kidney_risk or 0) * 100, 1))
 
         return render_template(
             "dashboard.html",
             recent=recent,
             symptom_options=SYMPTOM_OPTIONS,
             chart_labels=chart_labels,
-            chart_probs=chart_probs,
+            chart_diabetes=chart_diabetes,
+            chart_heart=chart_heart,
+            chart_kidney=chart_kidney,
         )
 
     def _predict_from_payload(payload: dict) -> dict:
@@ -272,8 +275,36 @@ def create_app() -> Flask:
         overall_risk = risk_from_probability(highest_proba)
         recs = recommendations_for(overall_risk, most_likely_disease)
 
+        # XAI - Extract feature importances
+        feature_importances_json = "{}"
+        try:
+            best_pipeline = models[most_likely_disease]
+            preprocessor = best_pipeline.named_steps["preprocess"]
+            classifier = best_pipeline.named_steps["model"]
+            
+            feature_names = preprocessor.get_feature_names_out()
+            if hasattr(classifier, "feature_importances_"):
+                importances = classifier.feature_importances_
+            elif hasattr(classifier, "coef_"):
+                importances = np.abs(classifier.coef_[0])
+            else:
+                importances = np.zeros(len(feature_names))
+                
+            importance_dict = {str(f): float(i) for f, i in zip(feature_names, importances)}
+            sorted_importances = dict(sorted(importance_dict.items(), key=lambda item: item[1], reverse=True)[:7])
+            
+            clean_importances = {}
+            for k, v in sorted_importances.items():
+                clean_name = k.replace("num__", "").replace("cat__", "").replace("_", " ").title()
+                clean_importances[clean_name] = v
+                
+            feature_importances_json = json.dumps(clean_importances)
+        except Exception as e:
+            print(f"XAI Extraction Error: {e}")
+
         return {
             "inputs": {**X, "symptoms": symptoms_csv},
+            "feature_importances": feature_importances_json,
             "overall_risk": overall_risk,
             "most_likely_disease": most_likely_disease,
             "probabilities": probabilities,
@@ -322,6 +353,7 @@ def create_app() -> Flask:
             overall_risk=result["overall_risk"],
             most_likely_disease=result["most_likely_disease"],
             model_name="multi_models",
+            feature_importances=result.get("feature_importances", "{}"),
 
             created_at=datetime.utcnow(),
         )
@@ -372,6 +404,7 @@ def create_app() -> Flask:
             overall_risk=result["overall_risk"],
             most_likely_disease=result["most_likely_disease"],
             model_name="multi_models",
+            feature_importances=result.get("feature_importances", "{}"),
 
         )
         db.session.add(pred)
@@ -441,7 +474,26 @@ def create_app() -> Flask:
             .limit(50)
             .all()
         )
-        return render_template("doctor_patient.html", patient=patient, preds=preds)
+        
+        chart_rows = preds[:10][::-1]
+        chart_labels = [r.created_at.strftime("%m-%d %H:%M") for r in chart_rows]
+        chart_diabetes = []
+        chart_heart = []
+        chart_kidney = []
+        for r in chart_rows:
+            chart_diabetes.append(round(float(r.diabetes_risk or 0) * 100, 1))
+            chart_heart.append(round(float(r.heart_risk or 0) * 100, 1))
+            chart_kidney.append(round(float(r.kidney_risk or 0) * 100, 1))
+            
+        return render_template(
+            "doctor_patient.html", 
+            patient=patient, 
+            preds=preds,
+            chart_labels=chart_labels,
+            chart_diabetes=chart_diabetes,
+            chart_heart=chart_heart,
+            chart_kidney=chart_kidney
+        )
 
     # -------------------------
     # Bonus: chatbot (rule-based)

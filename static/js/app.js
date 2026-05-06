@@ -22,25 +22,90 @@ async function postJSON(url, body) {
 }
 
 window.addEventListener("DOMContentLoaded", () => {
-  // Chart
+  // Longitudinal Chart
   const chartEl = qs("#riskChart");
   if (chartEl && window.Chart) {
     const labels = window.__chartLabels || [];
-    const probs = window.__chartProbs || [];
-    new Chart(chartEl, {
+    
+    // If we have multiline data
+    if (window.__chartDiabetes) {
+      new Chart(chartEl, {
+        type: "line",
+        data: {
+          labels,
+          datasets: [
+            {
+              label: "Diabetes",
+              data: window.__chartDiabetes,
+              borderColor: "rgba(239,68,68,1)",
+              backgroundColor: "rgba(239,68,68,0.1)",
+              tension: 0.3, fill: true
+            },
+            {
+              label: "Heart",
+              data: window.__chartHeart,
+              borderColor: "rgba(59,130,246,1)",
+              backgroundColor: "rgba(59,130,246,0.1)",
+              tension: 0.3, fill: true
+            },
+            {
+              label: "Kidney",
+              data: window.__chartKidney,
+              borderColor: "rgba(16,185,129,1)",
+              backgroundColor: "rgba(16,185,129,0.1)",
+              tension: 0.3, fill: true
+            }
+          ]
+        },
+        options: {
+          plugins: { legend: { display: true } },
+          scales: { y: { beginAtZero: true, max: 100 } }
+        }
+      });
+    } else {
+      // Fallback
+      const probs = window.__chartProbs || [];
+      new Chart(chartEl, {
+        type: "bar",
+        data: {
+          labels,
+          datasets: [{
+            label: "Risk %",
+            data: probs,
+            backgroundColor: probs.map((v) => v < 33 ? "rgba(16,185,129,.75)" : (v < 66 ? "rgba(245,158,11,.80)" : "rgba(239,68,68,.78)")),
+            borderRadius: 10,
+          }]
+        },
+        options: {
+          plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: true, max: 100 } }
+        }
+      });
+    }
+  }
+
+  // XAI Feature Importance Chart
+  const xaiChartEl = qs("#xaiChart");
+  if (xaiChartEl && window.Chart && window.__featureImportances) {
+    const features = window.__featureImportances;
+    const labels = Object.keys(features);
+    const data = Object.values(features);
+    
+    new Chart(xaiChartEl, {
       type: "bar",
       data: {
         labels,
         datasets: [{
-          label: "Risk %",
-          data: probs,
-          backgroundColor: probs.map((v) => v < 33 ? "rgba(16,185,129,.75)" : (v < 66 ? "rgba(245,158,11,.80)" : "rgba(239,68,68,.78)")),
-          borderRadius: 10,
+          label: "Importance",
+          data,
+          backgroundColor: "rgba(99,102,241,0.8)",
+          borderRadius: 4,
         }]
       },
       options: {
+        indexAxis: 'y',
         plugins: { legend: { display: false } },
-        scales: { y: { beginAtZero: true, max: 100 } }
+        scales: { x: { beginAtZero: true } }
       }
     });
   }

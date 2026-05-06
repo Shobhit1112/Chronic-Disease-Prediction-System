@@ -92,6 +92,23 @@
         </div>
       </div>
 
+      {% if pred.feature_importances and pred.feature_importances != "{}" %}
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Explainable AI (Why did I get this result?)</div>
+            <div class="muted">Top contributing factors to this prediction</div>
+          </div>
+        </div>
+        <div class="card-body">
+          <canvas id="xaiChart" height="150"></canvas>
+          <script>
+            window.__featureImportances = {{ pred.feature_importances|safe }};
+          </script>
+        </div>
+      </div>
+      {% endif %}
+
       <div class="card">
         <div class="card-header">
           <div>

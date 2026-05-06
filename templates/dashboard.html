@@ -13,23 +13,37 @@
         </div>
       </div>
 
+      {% if current_user.role == 'doctor' %}
       <div class="card">
         <div class="card-header">
           <div>
-            <div class="card-title">Risk trend (last 10)</div>
-            <div class="muted">Probability (%) over time</div>
+            <div class="card-title">Doctor Portal</div>
+            <div class="muted">Manage your patients</div>
+          </div>
+        </div>
+        <div class="card-body">
+          <p style="margin-bottom: 1rem;">You can run predictions for patients using the form on the right. To view all your patients and their detailed longitudinal progress, visit the <a href="{{ url_for('doctor_patients') }}" class="link"><strong>Patient List</strong></a>.</p>
+        </div>
+      </div>
+      {% else %}
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Longitudinal Risk Trend</div>
+            <div class="muted">Disease probability (%) over time</div>
           </div>
         </div>
         <div class="card-body">
           <canvas id="riskChart" height="110"></canvas>
         </div>
       </div>
+      {% endif %}
 
       <div class="card">
         <div class="card-header">
           <div>
             <div class="card-title">Recent predictions</div>
-            <div class="muted">Your latest results</div>
+            <div class="muted">{% if current_user.role == 'doctor' %}Latest system-wide predictions{% else %}Your latest results{% endif %}</div>
           </div>
         </div>
         <div class="card-body">
@@ -195,6 +209,13 @@
 
   <script>
     window.__chartLabels = {{ chart_labels|tojson }};
+    {% if chart_probs %}
     window.__chartProbs = {{ chart_probs|tojson }};
+    {% endif %}
+    {% if chart_diabetes %}
+    window.__chartDiabetes = {{ chart_diabetes|tojson }};
+    window.__chartHeart = {{ chart_heart|tojson }};
+    window.__chartKidney = {{ chart_kidney|tojson }};
+    {% endif %}
   </script>
 {% endblock %}

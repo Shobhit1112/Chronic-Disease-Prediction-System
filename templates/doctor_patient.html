@@ -6,6 +6,18 @@
       <p class="muted">{{ patient.email }}</p>
     </div>
 
+    <div class="card" style="margin-bottom: 2rem;">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Longitudinal Risk Trend</div>
+          <div class="muted">Disease probability (%) over time</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <canvas id="riskChart" height="110"></canvas>
+      </div>
+    </div>
+
     <div class="card">
       <div class="card-header">
         <div>
@@ -26,15 +38,23 @@
               <div class="trow">
                 <div>{{ r.created_at.strftime("%Y-%m-%d %H:%M") }}</div>
                 <div>
-                  {% if r.risk_level == "low" %}
+                  {% set risk_val = r.overall_risk if r.overall_risk else r.risk_level %}
+                  {% if risk_val == "low" %}
                     <span class="pill pill-green">Low</span>
-                  {% elif r.risk_level == "medium" %}
+                  {% elif risk_val == "medium" %}
                     <span class="pill pill-yellow">Medium</span>
                   {% else %}
                     <span class="pill pill-red">High</span>
                   {% endif %}
                 </div>
-                <div><b>{{ (r.probability*100)|round(1) }}%</b></div>
+                <div><b>
+                  {% if r.diabetes_risk %}
+                    {% set m_prob = [r.diabetes_risk, r.heart_risk, r.kidney_risk]|max %}
+                    {{ (m_prob * 100)|round(1) }}%
+                  {% else %}
+                    {{ (r.probability*100)|round(1) }}%
+                  {% endif %}
+                </b></div>
                 <div><a class="link" href="{{ url_for('result', prediction_id=r.id) }}">Open</a></div>
               </div>
             {% endfor %}
@@ -45,4 +65,13 @@
       </div>
     </div>
   </section>
+
+  <script>
+    window.__chartLabels = {{ chart_labels|tojson }};
+    {% if chart_diabetes %}
+    window.__chartDiabetes = {{ chart_diabetes|tojson }};
+    window.__chartHeart = {{ chart_heart|tojson }};
+    window.__chartKidney = {{ chart_kidney|tojson }};
+    {% endif %}
+  </script>
 {% endblock %}

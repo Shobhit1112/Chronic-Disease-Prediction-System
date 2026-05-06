@@ -70,6 +70,7 @@ class Prediction(db.Model):
     kidney_risk = db.Column(db.Float, nullable=True)
     overall_risk = db.Column(db.String(10), nullable=True)
     most_likely_disease = db.Column(db.String(50), nullable=True)
+    feature_importances = db.Column(db.Text, nullable=True)  # Store JSON as Text
 
     model_name = db.Column(db.String(60), nullable=False)
 
